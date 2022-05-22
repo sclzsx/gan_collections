@@ -10,6 +10,8 @@ from pathlib import Path
 import random
 import shutil
 from tqdm import tqdm
+import torchvision.transforms.functional as f
+
 
 # class_names = [i.name for i in Path('../UCMerced_LandUse/Images').iterdir() if i.is_dir()]
 # class_ids = [i for i in range(len(class_names))]
@@ -19,7 +21,7 @@ from tqdm import tqdm
 group1 = 'agricultural,airplane,baseballdiamond,beach,buildings,chaparral,denseresidential'
 group2 = 'forest,freeway,golfcourse,harbor,intersection,mediumresidential,mobilehomepark'
 group3 = 'overpass,parkinglot,river,runway,sparseresidential,storagetanks,tenniscourt'
-
+all_names = group1 + ',' + group2 + ',' + group3
 
 def mkdir(dir):
     if not os.path.exists(dir):
@@ -69,7 +71,7 @@ def offline_aug_data(data_dir, aug_num_each=100):
 
 
 class UCDataset(Dataset):
-    def __init__(self, image_dir, train_aug=0, choose_classes='', img_size=64):
+    def __init__(self, image_dir, train_aug=0, choose_classes='', img_size=64, use_crop=1):
         if len(choose_classes) < 1:
             self.paths = [i for i in Path(image_dir).rglob('*.*')]
             class_names = [i.name for i in Path('../UCMerced_LandUse/Images').iterdir() if i.is_dir()]
@@ -84,27 +86,52 @@ class UCDataset(Dataset):
             class_names = choose_classes.split(',')
             class_ids = [i for i in range(len(class_names))]
             self.class_name2id = dict(zip(class_names, class_ids))
-            print(self.class_name2id)
+            # print(self.class_name2id)
 
-        if train_aug != 0:
-            self.transform = transforms.Compose([
-                # transforms.RandomCrop(img_size, padding=4),
-                transforms.RandomVerticalFlip(p=0.5),
-                transforms.RandomHorizontalFlip(p=0.5),
-                # transforms.Resize((img_size, img_size)),
-                transforms.RandomCrop(img_size),
-                transforms.ToTensor(),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])
+        if use_crop:
+            if train_aug:
+                self.transform = transforms.Compose([
+                    # transforms.RandomCrop(img_size, padding=4),
+                    # transforms.RandomVerticalFlip(p=0.5),
+                    # transforms.RandomHorizontalFlip(p=0.5),
+                    # transforms.Resize((img_size, img_size)),
+                    # transforms.RandomCrop(img_size),
+                    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+                    transforms.RandomResizedCrop(img_size),
+                    transforms.ToTensor(),
+                    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    # transforms.RandomCrop(img_size),
+                    transforms.RandomResizedCrop(img_size),
+                    # transforms.Resize((img_size, img_size)),
+                    transforms.ToTensor(),
+                    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
         else:
-            self.transform = transforms.Compose([
-                transforms.RandomCrop(img_size),
-                # transforms.Resize((img_size, img_size)),
-                transforms.ToTensor(),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])
+            if train_aug:
+                self.transform = transforms.Compose([
+                    # transforms.RandomCrop(img_size, padding=4),
+                    # transforms.RandomVerticalFlip(p=0.5),
+                    # transforms.RandomHorizontalFlip(p=0.5),
+                    # transforms.RandomCrop(img_size),
+                    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+                    transforms.Resize((img_size, img_size), interpolation=f._interpolation_modes_from_int(0)),
+                    transforms.ToTensor(),
+                    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    # transforms.RandomCrop(img_size),
+                    transforms.Resize((img_size, img_size), interpolation=f._interpolation_modes_from_int(0)),
+                    transforms.ToTensor(),
+                    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
 
     def __len__(self):
         return len(self.paths)
@@ -114,7 +141,11 @@ class UCDataset(Dataset):
         image = Image.open(str(path))
         img_tensor = self.transform(image)
 
-        class_name = (path.name.split('.')[0]).split('_')[0][:-2]
+        # print(path.name)
+        class_name = path.name.split('.')[0]
+        # print(class_name)
+        class_name = class_name.split('_')[0][:-2]
+        # print(class_name)
         class_id = self.class_name2id[class_name]
 
         label_tensor = torch.from_numpy(np.ascontiguousarray(class_id).astype('int64')).squeeze()
@@ -127,12 +158,13 @@ if __name__ == '__main__':
 
     # offline_aug_data('../UCMerced_LandUse/train64')
 
-    dataset = UCDataset('../UCMerced_LandUse/train256', train_aug=1, choose_classes='', img_size=64)
+    dataset = UCDataset(image_dir='../UCMerced_LandUse/train64_tiny', train_aug=0, choose_classes=all_names, img_size=64, use_crop=0)
 
     print(len(dataset))
 
-    loader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
+    loader = DataLoader(dataset, batch_size=21, shuffle=True, num_workers=0)
     for i, batch_data in enumerate(loader):
+        # print(len(batch_data))
         print(batch_data[0].shape, batch_data[1])
         if i % 10 == 0 and i > 0:
             print('Check done', i)

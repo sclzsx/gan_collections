@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from dataloader import dataloader
-from uc_dataset import UCDataset
+from uc_dataset import UCDataset, all_names
 
 
 class generator(nn.Module):
@@ -89,6 +89,11 @@ class discriminator(nn.Module):
 
 class ACGAN(object):
     def __init__(self, args):
+        self.g_pkl_path = args.g_pkl_path
+        self.d_pkl_path = args.d_pkl_path
+        self.save_epoch_freq = args.save_epoch_freq
+        self.datadir = args.datadir
+
         # parameters
         self.epoch = args.epoch
         self.sample_num = 100
@@ -108,9 +113,22 @@ class ACGAN(object):
         # self.class_num = 10
         self.sample_num = self.class_num ** 2
 
+        if self.g_pkl_path is not None:
+            # args.lrG = args.lrG / 100
+            args.lrG = args.lrG
+        if self.d_pkl_path is not None:
+            # args.lrD = args.lrD / 100
+            args.lrG = args.lrG
+
+        self.use_crop = args.use_crop
+        self.train_aug = args.train_aug
+
         # load dataset
-        self.data_loader = dataloader(self.dataset, self.input_size, self.batch_size)
+        self.data_loader = dataloader(dataset=self.dataset, input_size=self.input_size, batch_size=self.batch_size,
+                                      split='train', train_aug=self.train_aug, use_crop=self.use_crop,
+                                      datadir=self.datadir)
         data = self.data_loader.__iter__().__next__()[0]
+        # print(data)
 
         # networks init
         self.G = generator(input_dim=self.z_dim, output_dim=data.shape[1], input_size=self.input_size,
@@ -119,6 +137,11 @@ class ACGAN(object):
                                class_num=self.class_num)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+
+        # if self.g_pkl_path is not None:
+        #     self.G_optimizer = optim.SGD(self.G.parameters(), lr=args.lrG, momentum=0.9, weight_decay=5e-4)
+        # if self.d_pkl_path is not None:
+        #     self.D_optimizer = optim.SGD(self.D.parameters(), lr=args.lrG, momentum=0.9, weight_decay=5e-4)
 
         if self.gpu_mode:
             self.G.cuda()
@@ -154,6 +177,11 @@ class ACGAN(object):
             self.sample_z_, self.sample_y_ = self.sample_z_.cuda(), self.sample_y_.cuda()
 
     def train(self):
+        if self.g_pkl_path is not None:
+            self.G.load_state_dict(torch.load(self.g_pkl_path))
+        if self.d_pkl_path is not None:
+            self.D.load_state_dict(torch.load(self.d_pkl_path))
+
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
@@ -168,7 +196,8 @@ class ACGAN(object):
         print('training start!!')
         print_iter_freq = 0.1
         print_iter_freq = int(len(self.data_loader) * print_iter_freq)
-        save_epoch_freq = 50
+        if print_iter_freq == 0:
+            print_iter_freq = 1
         start_time = time.time()
         for epoch in range(self.epoch):
             self.G.train()
@@ -221,18 +250,24 @@ class ACGAN(object):
                 if ((iter + 1) % print_iter_freq) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                           (
-                          (epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size, D_loss.item(),
-                          G_loss.item()))
+                              (epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
+                              D_loss.item(),
+                              G_loss.item()))
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
 
-            if (epoch + 1) % save_epoch_freq == 0:
+            if (epoch + 1) % self.save_epoch_freq == 0:
                 with torch.no_grad():
                     self.visualize_results((epoch + 1))
                 self.save()
 
-                dataset = UCDataset('../UCMerced_LandUse/train256', train_aug=1, choose_classes='', img_size=self.input_size)
-                self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+                # 也许是训练不好的问题根源！
+                self.data_loader = dataloader(dataset=self.dataset, input_size=self.input_size,
+                                              batch_size=self.batch_size,
+                                              split='train', train_aug=self.train_aug, use_crop=self.use_crop,
+                                              datadir=self.datadir)
+                vislabel = self.data_loader.__iter__().__next__()[1]
+                print(vislabel)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -241,7 +276,7 @@ class ACGAN(object):
 
         self.save()
         utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 self.epoch)
+                                 self.epoch, self.save_epoch_freq)
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     def visualize_results(self, epoch, fix=True):
@@ -259,7 +294,7 @@ class ACGAN(object):
         else:
             """ random noise """
             sample_y_ = torch.zeros(self.batch_size, self.class_num).scatter_(1, torch.randint(0, self.class_num - 1, (
-            self.batch_size, 1)).type(torch.LongTensor), 1)
+                self.batch_size, 1)).type(torch.LongTensor), 1)
             sample_z_ = torch.rand((self.batch_size, self.z_dim))
             if self.gpu_mode:
                 sample_z_, sample_y_ = sample_z_.cuda(), sample_y_.cuda()

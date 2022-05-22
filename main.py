@@ -25,8 +25,8 @@ def parse_args():
                         choices=['mnist', 'fashion-mnist', 'cifar10', 'cifar100', 'svhn', 'stl10', 'lsun-bed'],
                         help='The name of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
-    parser.add_argument('--epoch', type=int, default=5000, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+
+    parser.add_argument('--batch_size', type=int, default=21, help='The size of batch')
     parser.add_argument('--input_size', type=int, default=64, help='The size of input image')
     parser.add_argument('--save_dir', type=str, default='models',
                         help='Directory name to save the model')
@@ -38,6 +38,16 @@ def parse_args():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--benchmark_mode', type=bool, default=True)
+
+    parser.add_argument('--datadir', type=str, default='../UCMerced_LandUse/train64_tiny')
+    # parser.add_argument('--g_pkl_path', type=str, default='./gan_collections/models/uc/ACGAN/ACGAN_G.pkl')
+    # parser.add_argument('--d_pkl_path', type=str, default='./gan_collections/models/uc/ACGAN/ACGAN_D.pkl')
+    parser.add_argument('--g_pkl_path', type=str, default=None)
+    parser.add_argument('--d_pkl_path', type=str, default=None)
+    parser.add_argument('--epoch', type=int, default=50000)
+    parser.add_argument('--save_epoch_freq', type=int, default=500)
+    parser.add_argument('--train_aug', type=bool, default=True)
+    parser.add_argument('--use_crop', type=bool, default=False)
 
     return check_args(parser.parse_args())
 
