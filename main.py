@@ -40,8 +40,6 @@ def parse_args():
     parser.add_argument('--benchmark_mode', type=bool, default=True)
 
     parser.add_argument('--datadir', type=str, default='../UCMerced_LandUse/train64_tiny')
-    # parser.add_argument('--g_pkl_path', type=str, default='./gan_collections/models/uc/ACGAN/ACGAN_G.pkl')
-    # parser.add_argument('--d_pkl_path', type=str, default='./gan_collections/models/uc/ACGAN/ACGAN_D.pkl')
     parser.add_argument('--g_pkl_path', type=str, default=None)
     parser.add_argument('--d_pkl_path', type=str, default=None)
     parser.add_argument('--epoch', type=int, default=20000)

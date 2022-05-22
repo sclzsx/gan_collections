@@ -1,3 +1,5 @@
+import shutil
+
 import torch
 from ACGAN import generator, discriminator
 import cv2
@@ -5,6 +7,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 from uc_dataset import mkdir, all_names
+from pathlib import Path
 
 
 # def dis_images(pkl_path, label):
@@ -68,26 +71,29 @@ def gen_images(pkl_path, batch_size, real_class, save_dir, class_id2name):
         sample.save(save_dir + '/' + class_id2name[real_class] + 'XX' + '_GAN' + str(i) + '.jpg', quality=100)
 
 
+def merge_dataset():
+    new_dir = '../UCMerced_LandUse/train64withGAN'
+    mkdir(new_dir)
+    for i in Path('../UCMerced_LandUse/train64').glob('*.*'):
+        shutil.copy(str(i), new_dir)
+
+    for i in Path('../UCMerced_LandUse/train64_GAN').glob('*.*'):
+        shutil.copy(str(i), new_dir)
+
+
 if __name__ == '__main__':
     save_dir = '../UCMerced_LandUse/train64_GAN'
 
-    pkl_path = './models/uc/ACGAN/ACGAN_G_ep3999.pkl'
+    pkl_path = './models_main2/uc/ACGAN/ACGAN_G_ep9.pkl'
 
     class_names = all_names.split(',')
     class_ids = [i for i in range(len(class_names))]
     class_name2id = dict(zip(class_names, class_ids))
     class_id2name = dict(zip(class_ids, class_names))
 
-    # pkl_path2 = 'tmp/ACGAN_D.pkl'
-
     for id in tqdm(class_ids):
-        batch_size = 4
+        batch_size = 80
         real_class = id
         gen_images(pkl_path, batch_size, real_class, save_dir, class_id2name)
 
-    # tmp = ''
-    # for name in class_names:
-    #     tmp = tmp+ ','+name
-    # print(tmp)
-
-
+    merge_dataset()

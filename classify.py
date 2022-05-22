@@ -27,7 +27,8 @@ max_epoch = 200
 batch_size = 8
 img_size = 64
 train_aug = 1
-gan_aug = 1
+
+gan_aug = 0
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -156,31 +157,31 @@ def do_test():
     best_acc = checkpoint['acc']
     print('ckpt best acc:', best_acc)
 
-    net.cuda()
-    net.eval()
-
-    correct = 0
-    total = 0
-    test_loss = 0
-
-    with torch.no_grad():
-        for i, (images, labels) in enumerate(test_dataset_loader):
-            images, labels = images.to(device), labels.to(device)
-            outputs = net(images)
-            loss = criterion(outputs, labels)
-
-            test_loss += loss.item()
-
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
-
-    acc = 100 * correct / total
-    print()
-    print("Accuracy of whole test dataset: %.2f %%" % acc)
+    # net.cuda()
+    # net.eval()
+    #
+    # correct = 0
+    # total = 0
+    # test_loss = 0
+    #
+    # with torch.no_grad():
+    #     for i, (images, labels) in enumerate(test_dataset_loader):
+    #         images, labels = images.to(device), labels.to(device)
+    #         outputs = net(images)
+    #         loss = criterion(outputs, labels)
+    #
+    #         test_loss += loss.item()
+    #
+    #         _, predicted = torch.max(outputs, 1)
+    #         total += labels.size(0)
+    #         correct += predicted.eq(labels).sum().item()
+    #
+    # acc = 100 * correct / total
+    # print()
+    # print("Accuracy of whole test dataset: %.2f %%" % acc)
 
 
 if __name__ == '__main__':
-    do_train()
+    # do_train()
 
     do_test()
