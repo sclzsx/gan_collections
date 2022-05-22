@@ -71,7 +71,7 @@ def gen_images(pkl_path, batch_size, real_class, save_dir, class_id2name):
 if __name__ == '__main__':
     save_dir = '../UCMerced_LandUse/train64_GAN'
 
-    pkl_path = './gan_collections/models/uc/ACGAN/ACGAN_G.pkl'
+    pkl_path = './models/uc/ACGAN/ACGAN_G_ep3999.pkl'
 
     class_names = all_names.split(',')
     class_ids = [i for i in range(len(class_names))]
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     # pkl_path2 = 'tmp/ACGAN_D.pkl'
 
     for id in tqdm(class_ids):
-        batch_size = 80
+        batch_size = 4
         real_class = id
         gen_images(pkl_path, batch_size, real_class, save_dir, class_id2name)
 
