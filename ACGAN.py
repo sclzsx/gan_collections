@@ -259,22 +259,22 @@ class ACGAN(object):
             if (epoch + 1) % self.save_epoch_freq == 0:
                 with torch.no_grad():
                     self.visualize_results((epoch + 1))
-                self.save()
+                self.save(epoch)
 
-                # 也许是训练不好的问题根源！
-                self.data_loader = dataloader(dataset=self.dataset, input_size=self.input_size,
-                                              batch_size=self.batch_size,
-                                              split='train', train_aug=self.train_aug, use_crop=self.use_crop,
-                                              datadir=self.datadir)
-                vislabel = self.data_loader.__iter__().__next__()[1]
-                print(vislabel)
+                # # 也许是训练不好的问题根源！
+                # self.data_loader = dataloader(dataset=self.dataset, input_size=self.input_size,
+                #                               batch_size=self.batch_size,
+                #                               split='train', train_aug=self.train_aug, use_crop=self.use_crop,
+                #                               datadir=self.datadir)
+                # vislabel = self.data_loader.__iter__().__next__()[1]
+                # print(vislabel)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-        self.save()
+        self.save(epoch)
         utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
                                  self.epoch, self.save_epoch_freq)
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
@@ -310,14 +310,14 @@ class ACGAN(object):
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
-    def save(self):
+    def save(self, epoch):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G_ep' + str(epoch) + '.pkl'))
+        torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D_ep' + str(epoch) + '.pkl'))
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
